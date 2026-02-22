@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { protect } = require('../middleware/authMiddleware');
-const { transporter, sendSelfTestEmail } = require('../utils/mailer');
+const { transporter, sendSelfTestEmail, isEmailConfigured } = require('../utils/mailer');
 
 // Generate Token
 const generateToken = (id) => {
@@ -90,6 +90,13 @@ router.post('/change-password', protect, async (req, res) => {
 // @access  Public
 router.post('/forgot-password', async (req, res) => {
     try {
+        // Early check — return a clear message if SMTP is not configured on this server
+        if (!isEmailConfigured()) {
+            return res.status(503).json({
+                message: 'Email service is not configured on this server. Please contact the administrator to reset your password manually.'
+            });
+        }
+
         const { email } = req.body; // may actually be an email OR a username/empId
         if (!email || !String(email).trim()) {
             return res.status(400).json({ message: 'Please provide your registered email or Employee ID' });

@@ -4,15 +4,44 @@
  */
 const nodemailer = require('nodemailer');
 
-const transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: false,
-    auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-    },
-});
+/**
+ * Returns true only when all required SMTP env vars are present and non-placeholder.
+ */
+function isEmailConfigured() {
+    const { EMAIL_HOST, EMAIL_USER, EMAIL_PASS } = process.env;
+    return (
+        EMAIL_HOST && EMAIL_HOST !== '<your_email_host>' &&
+        EMAIL_USER && EMAIL_USER !== '<your_email_user>' &&
+        EMAIL_PASS && EMAIL_PASS !== '<your_gmail_app_password>'
+    );
+}
+
+/**
+ * Lazily creates the nodemailer transporter only when env vars are available.
+ * Throws a clear error if SMTP is not configured so callers can handle gracefully.
+ */
+function getTransporter() {
+    if (!isEmailConfigured()) {
+        throw new Error(
+            'Email is not configured. Please set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS in your environment variables (Render dashboard).'
+        );
+    }
+    return nodemailer.createTransport({
+        host: process.env.EMAIL_HOST,
+        port: Number(process.env.EMAIL_PORT) || 587,
+        secure: false,
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS,
+        },
+    });
+}
+
+// Keep a named export for legacy usages in routes that import `transporter` directly.
+// It's a proxy object — sendMail() will validate config at call time.
+const transporter = {
+    sendMail: (opts) => getTransporter().sendMail(opts),
+};
 
 /**
  * Send welcome email to a newly created employee with their login credentials.
@@ -215,4 +244,4 @@ async function sendMonthlyUpdateNotification(employee, displayMonth) {
     });
 }
 
-module.exports = { transporter, sendWelcomeEmail, sendCredentialsSummaryToAdmin, sendSelfTestEmail, sendMonthlyUpdateNotification };
+module.exports = { transporter, isEmailConfigured, sendWelcomeEmail, sendCredentialsSummaryToAdmin, sendSelfTestEmail, sendMonthlyUpdateNotification };
