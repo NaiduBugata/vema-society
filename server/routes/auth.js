@@ -186,8 +186,11 @@ router.post('/forgot-password', async (req, res) => {
             viaAdmin
         });
     } catch (error) {
-        console.error('Forgot password error:', error.message);
-        res.status(500).json({ message: 'Failed to send reset email. Please try again later.' });
+        console.error('Forgot password error:', error);
+        res.status(500).json({
+            message: 'Failed to send reset email. Please try again later.',
+            detail: error.message  // visible in browser for debugging
+        });
     }
 });
 

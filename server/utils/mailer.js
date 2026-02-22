@@ -26,13 +26,13 @@ function getTransporter() {
             'Email is not configured. Please set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS in your environment variables (Render dashboard).'
         );
     }
+    // Use service:'gmail' shorthand — handles host/port/TLS automatically and
+    // works correctly with Gmail App Passwords without extra TLS config.
     return nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: Number(process.env.EMAIL_PORT) || 587,
-        secure: false,
+        service: 'gmail',
         auth: {
             user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
+            pass: process.env.EMAIL_PASS.replace(/\s/g, ''), // strip any accidental spaces
         },
     });
 }
