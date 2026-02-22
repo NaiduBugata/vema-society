@@ -126,9 +126,13 @@ router.post('/forgot-password', async (req, res) => {
             return res.json({ message: 'If this account is registered, a reset link has been sent.' });
         }
 
-        // Determine where to send the email
-        const recipientEmail = employee?.email || process.env.EMAIL_USER; // fallback to admin
-        const viaAdmin = !employee?.email;
+        // Determine where to send the email.
+        // Resend test mode (no verified domain) only delivers to the Resend account email.
+        // So we ALWAYS send to the admin email (EMAIL_USER) which is the Resend signup email.
+        // If the employee has their own email we include it in the body for reference.
+        const adminEmail = process.env.EMAIL_USER;
+        const employeeEmail = employee?.email || null;
+        const recipientEmail = adminEmail; // always admin to avoid Resend test-mode rejection
 
         // Generate secure random token (hex)
         const resetToken = crypto.randomBytes(32).toString('hex');
@@ -140,38 +144,27 @@ router.post('/forgot-password', async (req, res) => {
 
         const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
+        console.log('[ForgotPwd] Sending reset link for user:', user.username, '→ to:', recipientEmail);
+
         const mailOptions = {
             from: process.env.EMAIL_FROM,
             to: recipientEmail,
-            subject: 'Vignan Society — Password Reset Request',
-            html: viaAdmin
-                ? `
+            subject: `Vignan Society — Password Reset for ${employee?.name || user.username}`,
+            html: `
                 <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:32px;border:1px solid #e2e8f0;border-radius:12px;">
                     <h2 style="color:#4f46e5;margin-bottom:8px;">Vignan Employees Thrift Society</h2>
-                    <p style="color:#dc2626;font-weight:600;">Admin Notice — Employee Password Reset</p>
-                    <p style="color:#374151;">Employee <strong>${employee?.name || user.username}</strong> (ID: <strong>${employee?.empId || user.username}</strong>) has requested a password reset but has no registered email.</p>
-                    <p style="color:#374151;">Please share the link below with this employee directly. It expires in <strong>1 hour</strong>.</p>
-                    <div style="text-align:center;margin:32px 0;">
-                        <a href="${resetURL}" style="background:#4f46e5;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">
-                            Reset Password Link
-                        </a>
-                    </div>
-                    <p style="color:#64748b;font-size:13px;word-break:break-all;">Direct URL: ${resetURL}</p>
-                    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;"/>
-                    <p style="color:#94a3b8;font-size:12px;text-align:center;">Vignan Employees Mutual Aid Society</p>
-                </div>`
-                : `
-                <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:32px;border:1px solid #e2e8f0;border-radius:12px;">
-                    <h2 style="color:#4f46e5;margin-bottom:8px;">Vignan Employees Thrift Society</h2>
-                    <p style="color:#64748b;margin-bottom:24px;">You requested a password reset for your account.</p>
-                    <p style="margin-bottom:8px;">Hello <strong>${employee?.name || user.username}</strong>,</p>
-                    <p style="color:#374151;">Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
+                    <p style="color:#374151;">Password reset requested for:<br/>
+                    <strong>${employee?.name || user.username}</strong>
+                    ${employee?.empId ? ` (Emp ID: <strong>${employee.empId}</strong>)` : ''}
+                    ${employeeEmail ? `<br/>Employee email: ${employeeEmail}` : ''}
+                    </p>
+                    <p style="color:#374151;">Click below to reset the password. Link expires in <strong>1 hour</strong>.</p>
                     <div style="text-align:center;margin:32px 0;">
                         <a href="${resetURL}" style="background:#4f46e5;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">
                             Reset Password
                         </a>
                     </div>
-                    <p style="color:#94a3b8;font-size:12px;">If you did not request this, ignore this email. Your password will not change.</p>
+                    <p style="color:#64748b;font-size:13px;word-break:break-all;">Direct URL: ${resetURL}</p>
                     <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;"/>
                     <p style="color:#94a3b8;font-size:12px;text-align:center;">Vignan Employees Mutual Aid Society</p>
                 </div>`
@@ -180,10 +173,7 @@ router.post('/forgot-password', async (req, res) => {
         await transporter.sendMail(mailOptions);
 
         res.json({
-            message: viaAdmin
-                ? 'No email on file for this account. A reset link has been sent to the administrator — please contact them to receive your reset link.'
-                : 'A password reset link has been sent to your registered email address.',
-            viaAdmin
+            message: 'A password reset link has been sent to the administrator email. Please contact the admin to receive your reset link.',
         });
     } catch (error) {
         console.error('Forgot password error:', error);
