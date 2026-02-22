@@ -1,46 +1,60 @@
 /**
- * Shared nodemailer transporter & email helpers
- * Used by auth routes and upload controller
+ * Email helpers using Resend (https://resend.com)
+ * Resend uses HTTPS (port 443) — not SMTP — so it works on Render free tier
+ * where Gmail SMTP (port 587) is blocked at the network level.
+ *
+ * Setup:
+ *  1. Sign up at https://resend.com (free — 3,000 emails/month)
+ *  2. Go to API Keys → Create API Key → copy it
+ *  3. Add to Render environment variables:  RESEND_API_KEY = re_xxxxxxxxxxxx
+ *  4. (Optional) Add RESEND_FROM once you verify a custom domain
+ *     Without a verified domain the FROM defaults to onboarding@resend.dev
  */
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-/**
- * Returns true only when all required SMTP env vars are present and non-placeholder.
- */
 function isEmailConfigured() {
-    const { EMAIL_HOST, EMAIL_USER, EMAIL_PASS } = process.env;
-    return (
-        EMAIL_HOST && EMAIL_HOST !== '<your_email_host>' &&
-        EMAIL_USER && EMAIL_USER !== '<your_email_user>' &&
-        EMAIL_PASS && EMAIL_PASS !== '<your_gmail_app_password>'
-    );
+    return !!(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== '<your_resend_api_key>');
 }
 
-/**
- * Lazily creates the nodemailer transporter only when env vars are available.
- * Throws a clear error if SMTP is not configured so callers can handle gracefully.
- */
-function getTransporter() {
+function getResend() {
     if (!isEmailConfigured()) {
         throw new Error(
-            'Email is not configured. Please set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS in your environment variables (Render dashboard).'
+            'Email is not configured. Add RESEND_API_KEY to your Render environment variables. ' +
+            'Get a free key at https://resend.com'
         );
     }
-    // Use service:'gmail' shorthand — handles host/port/TLS automatically and
-    // works correctly with Gmail App Passwords without extra TLS config.
-    return nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS.replace(/\s/g, ''), // strip any accidental spaces
-        },
-    });
+    return new Resend(process.env.RESEND_API_KEY);
 }
 
-// Keep a named export for legacy usages in routes that import `transporter` directly.
-// It's a proxy object — sendMail() will validate config at call time.
+/**
+ * Core send helper — maps familiar { from, to, subject, html, attachments }
+ * to the Resend HTTP API.
+ */
+async function sendEmail({ from, to, subject, html, attachments }) {
+    const resend = getResend();
+    // Use RESEND_FROM env var if set (verified domain), otherwise use the
+    // caller's from address, otherwise fall back to Resend's shared test domain.
+    const sender = process.env.RESEND_FROM || from || 'Vignan Society <onboarding@resend.dev>';
+    const payload = { from: sender, to, subject, html };
+    if (attachments && attachments.length > 0) {
+        payload.attachments = attachments.map(a => ({
+            filename: a.filename,
+            content: Buffer.isBuffer(a.content)
+                ? a.content
+                : Buffer.from(a.content, 'utf8'),
+        }));
+    }
+    const { data, error } = await resend.emails.send(payload);
+    if (error) {
+        throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
+    }
+    return data;
+}
+
+// Legacy proxy — keeps backwards-compatibility for code that calls transporter.sendMail()
 const transporter = {
-    sendMail: (opts) => getTransporter().sendMail(opts),
+    sendMail: ({ from, to, subject, html, attachments }) =>
+        sendEmail({ from, to, subject, html, attachments }),
 };
 
 /**
@@ -49,7 +63,7 @@ const transporter = {
  */
 async function sendWelcomeEmail({ name, email, empId, username, password }) {
     const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/login`;
-    await transporter.sendMail({
+    await sendEmail({
         from: process.env.EMAIL_FROM,
         to: email,
         subject: 'Vignan Society — Your Account Has Been Created',
@@ -129,7 +143,7 @@ async function sendCredentialsSummaryToAdmin(createdUsers, fileName) {
         ...createdUsers.map(u => [u.empId || '', u.name, u.username, u.password].map(escape).join(','))
     ].join('\n');
 
-    await transporter.sendMail({
+    await sendEmail({
         from: process.env.EMAIL_FROM,
         to: adminEmail,
         subject: `[Vignan Society] ${createdUsers.length} New Employee Credential(s) — ${fileName}`,
@@ -180,7 +194,7 @@ async function sendCredentialsSummaryToAdmin(createdUsers, fileName) {
  */
 async function sendSelfTestEmail() {
     const adminEmail = process.env.EMAIL_USER;
-    await transporter.sendMail({
+    await sendEmail({
         from: process.env.EMAIL_FROM,
         to: adminEmail,
         subject: '[Vignan Society] ✅ Email Configuration Test',
@@ -209,7 +223,7 @@ async function sendSelfTestEmail() {
  */
 async function sendMonthlyUpdateNotification(employee, displayMonth) {
     const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}`;
-    await transporter.sendMail({
+    await sendEmail({
         from: process.env.EMAIL_FROM,
         to: employee.email,
         subject: `Vignan Society — ${displayMonth} Monthly Update Ready`,
