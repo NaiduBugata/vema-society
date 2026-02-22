@@ -41,7 +41,10 @@ const Login = () => {
     return (
         <div className="flex items-center justify-center min-h-screen bg-dark">
             <div className="card w-full max-w-md">
-                <h2 className="text-2xl font-bold text-center mb-6 text-primary">Vignan Thrift Society</h2>
+                <div className="flex flex-col items-center mb-6">
+                    <img src="/logo.png" alt="Vignan Logo" className="h-16 w-16 object-contain mb-3" />
+                    <h2 className="text-2xl font-bold text-center text-primary">Vignan Thrift Society</h2>
+                </div>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Email / Username</label>

@@ -16,7 +16,10 @@ const Sidebar = () => {
     return (
         <aside className="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col h-screen fixed transition-colors duration-200 z-10">
             <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-800">
-                <span className="font-bold text-lg text-indigo-600 dark:text-indigo-400">Vignan Society</span>
+                <div className="flex items-center space-x-2">
+                    <img src="/logo.png" alt="Vignan Logo" className="h-8 w-8 object-contain" />
+                    <span className="font-bold text-lg text-indigo-600 dark:text-indigo-400">Vignan Society</span>
+                </div>
                 <button
                     onClick={toggleTheme}
                     className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
