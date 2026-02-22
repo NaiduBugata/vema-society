@@ -240,7 +240,7 @@ const uploadMonthlyUpdate = async (req, res) => {
 
             try {
                 // Skip empty rows or total rows
-                const snoCol = firstRowKeys.find(k => k.toLowerCase().includes('s.no') || k.toLowerCase() === 'sno');
+                const snoCol = allRowKeys.find(k => k.toLowerCase().includes('s.no') || k.toLowerCase() === 'sno');
                 if (snoCol && (row[snoCol] === '' || row[snoCol] === undefined)) continue;
                 const nameColKey = columnMapping.name;
                 if (nameColKey && String(row[nameColKey] || '').toUpperCase() === 'TOTAL') continue;

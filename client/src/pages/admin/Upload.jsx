@@ -73,7 +73,6 @@ const Upload = () => {
 
         try {
             const { data } = await api.post(endpoint, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
                 onUploadProgress: (progressEvent) => {
                     const ratio = progressEvent.total
                         ? progressEvent.loaded / progressEvent.total
