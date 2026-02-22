@@ -4,11 +4,12 @@
 # Old vendor folders
 **/node_modules_old/
 
-# Env files (keep examples)
+# Env files (keep examples and production public config)
 **/.env
 **/.env.*
 !.env.example
 !**/.env.example
+!client/.env.production
 
 # Uploads / generated artifacts
 server/uploads/
