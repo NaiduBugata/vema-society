@@ -1,57 +1,69 @@
 /**
- * Email helpers using Resend (https://resend.com)
- * Resend uses HTTPS (port 443) — not SMTP — so it works on Render free tier
- * where Gmail SMTP (port 587) is blocked at the network level.
+ * Email helpers using Brevo (https://brevo.com)
+ * Brevo uses HTTPS (port 443) — not SMTP — works on Render free tier.
+ * Unlike Resend test mode, Brevo allows sending to ANY email address
+ * without domain verification (free tier: 300 emails/day).
  *
  * Setup:
- *  1. Sign up at https://resend.com (free — 3,000 emails/month)
- *  2. Go to API Keys → Create API Key → copy it
- *  3. Add to Render environment variables:  RESEND_API_KEY = re_xxxxxxxxxxxx
- *  4. (Optional) Add RESEND_FROM once you verify a custom domain
- *     Without a verified domain the FROM defaults to onboarding@resend.dev
+ *  1. Sign up at https://app.brevo.com (free)
+ *  2. Go to SMTP & API → API Keys → Generate a new API key
+ *  3. Add to Render environment variables: BREVO_API_KEY = your_key
  */
-const { Resend } = require('resend');
+const axios = require('axios');
 
 function isEmailConfigured() {
-    return !!(process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== '<your_resend_api_key>');
-}
-
-function getResend() {
-    if (!isEmailConfigured()) {
-        throw new Error(
-            'Email is not configured. Add RESEND_API_KEY to your Render environment variables. ' +
-            'Get a free key at https://resend.com'
-        );
-    }
-    return new Resend(process.env.RESEND_API_KEY);
+    return !!(process.env.BREVO_API_KEY && process.env.BREVO_API_KEY !== '<your_brevo_api_key>');
 }
 
 /**
- * Core send helper — maps familiar { from, to, subject, html, attachments }
- * to the Resend HTTP API.
+ * Core send helper using Brevo's transactional email HTTP API.
+ * Accepts { from, to, subject, html, attachments }
  */
 async function sendEmail({ from, to, subject, html, attachments }) {
-    const resend = getResend();
-    // Use RESEND_FROM env var if set (verified domain), otherwise use the
-    // caller's from address, otherwise fall back to Resend's shared test domain.
-    const sender = process.env.RESEND_FROM || from || 'Vignan Society <onboarding@resend.dev>';
-    const payload = { from: sender, to, subject, html };
+    if (!isEmailConfigured()) {
+        throw new Error(
+            'Email is not configured. Add BREVO_API_KEY to your Render environment variables. ' +
+            'Get a free key at https://app.brevo.com'
+        );
+    }
+
+    // Parse sender — accept 'Name <email>' or plain 'email'
+    const senderRaw = process.env.EMAIL_FROM || from || 'Vignan Society <vemasociety@gmail.com>';
+    const senderMatch = senderRaw.match(/^(.+)<(.+)>$/);
+    const sender = senderMatch
+        ? { name: senderMatch[1].trim(), email: senderMatch[2].trim() }
+        : { name: 'Vignan Society', email: senderRaw.trim() };
+
+    // Brevo expects `to` as an array of { email } objects
+    const toList = (Array.isArray(to) ? to : [to]).map(e =>
+        typeof e === 'string' ? { email: e } : e
+    );
+
+    const payload = {
+        sender,
+        to: toList,
+        subject,
+        htmlContent: html,
+    };
+
     if (attachments && attachments.length > 0) {
-        payload.attachments = attachments.map(a => ({
-            filename: a.filename,
-            content: Buffer.isBuffer(a.content)
+        payload.attachment = attachments.map(a => ({
+            name: a.filename,
+            content: (Buffer.isBuffer(a.content)
                 ? a.content
-                : Buffer.from(a.content, 'utf8'),
+                : Buffer.from(a.content, 'utf8')
+            ).toString('base64'),
         }));
     }
-    console.log('[Resend] Sending → from:', sender, '| to:', to, '| subject:', subject);
-    const { data, error } = await resend.emails.send(payload);
-    if (error) {
-        console.error('[Resend] FAILED:', JSON.stringify(error));
-        throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
-    }
-    console.log('[Resend] Sent OK, id:', data?.id);
-    return data;
+
+    console.log('[Brevo] Sending → to:', to, '| subject:', subject);
+    const response = await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        payload,
+        { headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' } }
+    );
+    console.log('[Brevo] Sent OK, messageId:', response.data?.messageId);
+    return response.data;
 }
 
 // Legacy proxy — keeps backwards-compatibility for code that calls transporter.sendMail()
