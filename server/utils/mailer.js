@@ -44,10 +44,13 @@ async function sendEmail({ from, to, subject, html, attachments }) {
                 : Buffer.from(a.content, 'utf8'),
         }));
     }
+    console.log('[Resend] Sending → from:', sender, '| to:', to, '| subject:', subject);
     const { data, error } = await resend.emails.send(payload);
     if (error) {
+        console.error('[Resend] FAILED:', JSON.stringify(error));
         throw new Error(`Resend error: ${error.message || JSON.stringify(error)}`);
     }
+    console.log('[Resend] Sent OK, id:', data?.id);
     return data;
 }
 
