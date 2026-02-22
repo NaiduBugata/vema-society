@@ -27,8 +27,11 @@ app.use((req, res, next) => {
 
 // Database Connection
 mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('MongoDB Connected'))
-    .catch(err => console.log(err));
+    .then(() => console.log('MongoDB Connected to:', mongoose.connection.name))
+    .catch(err => {
+        console.error('MongoDB connection FAILED:', err.message);
+        process.exit(1);
+    });
 
 // Routes (to be imported)
 app.use('/api/auth', require('./routes/auth'));
@@ -38,6 +41,18 @@ app.use('/api/loans', require('./routes/loans'));
 
 app.get('/', (req, res) => {
     res.send('API is running...');
+});
+
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+        env: {
+            MONGODB_URI: process.env.MONGODB_URI ? 'set' : 'MISSING',
+            JWT_SECRET: process.env.JWT_SECRET ? 'set' : 'MISSING',
+            CLIENT_URL: process.env.CLIENT_URL || 'not set'
+        }
+    });
 });
 
 app.listen(PORT, () => {
