@@ -13,7 +13,7 @@
  */
 const axios = require('axios');
 
-const KITE_URL = 'http://bulk.kitesms.com/v3/api.php';
+const KITE_URL = 'https://bulk.kitesms.com/v3/api.php';
 
 /** Format amount in Indian locale with rupee symbol: e.g. 87266.52 -> Rs.87,266.52 */
 function inr(amount) {
@@ -71,13 +71,29 @@ async function sendKiteSms({ mobile, message }) {
         message,
     };
 
-    const response = await axios.get(KITE_URL, { params, timeout: 10000 });
-    const result = response.data;
-    if (typeof result === 'string' && result.toUpperCase().startsWith('ERROR')) {
-        throw new Error(`KiteSMS error: ${result}`);
+    // Debug logging: show outgoing params (mask apikey)
+    const safeParams = { ...params, apikey: process.env.KITE_API_KEY ? '***masked***' : undefined };
+    console.log('[SMS] Sending to KiteSMS', { url: KITE_URL, params: safeParams });
+
+    try {
+        const response = await axios.get(KITE_URL, { params, timeout: 15000 });
+        console.log('[SMS] HTTP status:', response.status);
+        const result = response.data;
+        console.log('[SMS] KiteSMS response raw:', result);
+
+        // Kite may return an object like { Error: 'Invalid Request' }
+        if (typeof result === 'string' && result.toUpperCase().startsWith('ERROR')) {
+            throw new Error(`KiteSMS error: ${result}`);
+        }
+        if (result && (result.Error || result.error || result.INVALID)) {
+            throw new Error(`KiteSMS error response: ${JSON.stringify(result)}`);
+        }
+
+        return result;
+    } catch (err) {
+        console.error('[SMS] KiteSMS request failed:', err && err.response ? { status: err.response.status, data: err.response.data } : err.message || err);
+        throw err;
     }
-    console.log(`[SMS] KiteSMS response:`, result);
-    return result;
 }
 
 /** Send monthly financial update SMS to a single employee. */
