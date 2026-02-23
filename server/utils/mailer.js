@@ -2,13 +2,24 @@
 
 // --- Core transport ------------------------------------------------------
 
+const dns = require('dns');
+
 function createTransporter() {
     return nodemailer.createTransport({
-        service: "gmail",
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false, // use STARTTLS on port 587
+        requireTLS: true,
         auth: {
             user: process.env.EMAIL_USER,
             pass: process.env.EMAIL_PASS,
         },
+        tls: {
+            rejectUnauthorized: false
+        },
+        // Force IPv4 DNS lookup to avoid IPv6 ENETUNREACH errors in some environments
+        lookup: (hostname, options, callback) => dns.lookup(hostname, { family: 4 }, callback),
+        connectionTimeout: 10000,
     });
 }
 
