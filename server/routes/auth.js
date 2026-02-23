@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { protect } = require('../middleware/authMiddleware');
-const { transporter, sendSelfTestEmail, isEmailConfigured } = require('../utils/mailer');
+const { sendEmail, sendSelfTestEmail, isEmailConfigured } = require('../utils/mailer');
 
 // Generate Token
 const generateToken = (id) => {
@@ -173,7 +173,7 @@ router.post('/forgot-password', async (req, res) => {
                 </div>`
         };
 
-        await transporter.sendMail(mailOptions);
+        await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html);
 
         res.json({
             message: viaAdmin
