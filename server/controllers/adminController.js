@@ -9,8 +9,75 @@ const ArchivedMonth = require('../models/ArchivedMonth');
 const fs = require('fs');
 const path = require('path');
 const xlsx = require('xlsx');
-const { sendWelcomeEmail, sendCredentialsSummaryToAdmin, sendMonthlyUpdateNotification } = require('../utils/mailer');
+const sendEmail = require('../utils/mailer');
 const { sendMonthlyUpdateSms } = require('../utils/sms');
+
+const sendWelcomeEmail = async ({ name, email, empId, username, password }) => {
+    const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/login`;
+    await sendEmail(
+        email,
+        'Welcome to Vignan Society',
+        `
+<p>Hello <strong>${name}</strong>,</p>
+<p>Your account has been created.</p>
+<p>
+  Employee ID: <strong>${empId || 'N/A'}</strong><br/>
+  Username: <strong>${username}</strong><br/>
+  Temporary Password: <strong>${password}</strong>
+</p>
+<p><a href="${loginUrl}">Login</a></p>
+`
+    );
+};
+
+const sendCredentialsSummaryToAdmin = async (createdUsers, fileName) => {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    if (!adminEmail) return;
+
+    const rows = createdUsers
+        .map(
+            (u, i) =>
+                `<tr>
+                    <td style="padding:6px 10px;border:1px solid #e5e7eb;">${i + 1}</td>
+                    <td style="padding:6px 10px;border:1px solid #e5e7eb;">${u.empId || 'N/A'}</td>
+                    <td style="padding:6px 10px;border:1px solid #e5e7eb;">${u.name}</td>
+                    <td style="padding:6px 10px;border:1px solid #e5e7eb;">${u.username}</td>
+                    <td style="padding:6px 10px;border:1px solid #e5e7eb;">${u.password}</td>
+                </tr>`
+        )
+        .join('');
+
+    await sendEmail(
+        adminEmail,
+        `Employee credentials created (${createdUsers.length})`,
+        `
+<p>${createdUsers.length} employee account(s) were created from <strong>${fileName}</strong>.</p>
+<table style="border-collapse:collapse;">
+  <thead>
+    <tr>
+      <th style="padding:6px 10px;border:1px solid #e5e7eb;">#</th>
+      <th style="padding:6px 10px;border:1px solid #e5e7eb;">Emp ID</th>
+      <th style="padding:6px 10px;border:1px solid #e5e7eb;">Name</th>
+      <th style="padding:6px 10px;border:1px solid #e5e7eb;">Username</th>
+      <th style="padding:6px 10px;border:1px solid #e5e7eb;">Temp Password</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+</table>
+`
+    );
+};
+
+const sendMonthlyUpdateNotification = async (employee, displayMonth) => {
+    const portalUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}`;
+    await sendEmail(
+        employee.email,
+        `Vignan Society - ${displayMonth} Monthly Update`,
+        `<p>Dear <strong>${employee.name}</strong>,</p>
+<p>Your monthly update for <strong>${displayMonth}</strong> is ready.</p>
+<p><a href="${portalUrl}">Open Portal</a></p>`
+    );
+};
 
 // @desc    Get Admin Dashboard Stats
 // @route   GET /api/admin/dashboard

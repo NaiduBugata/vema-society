@@ -5,7 +5,9 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const Employee = require('../models/Employee');
 const { protect } = require('../middleware/authMiddleware');
-const { sendEmail, sendSelfTestEmail, isEmailConfigured } = require('../utils/mailer');
+const sendEmail = require('../utils/mailer');
+
+const isEmailConfigured = () => !!(process.env.BREVO_USER && process.env.BREVO_PASS);
 
 // Generate Token
 const generateToken = (id) => {
@@ -138,42 +140,15 @@ router.post('/forgot-password', async (req, res) => {
         user.resetPasswordExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
         await user.save();
 
-        const resetURL = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+        const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
 
         console.log('[ForgotPwd] Sending reset link for user:', user.username, '→ to:', recipientEmail);
 
-        const mailOptions = {
-            from: process.env.EMAIL_FROM,
-            to: recipientEmail,
-            subject: 'Vignan Society — Password Reset Request',
-            html: viaAdmin
-                ? `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:32px;border:1px solid #e2e8f0;border-radius:12px;">
-                    <h2 style="color:#4f46e5;margin-bottom:8px;">Vignan Employees Thrift Society</h2>
-                    <p style="color:#dc2626;font-weight:600;">Admin Notice — Employee Password Reset</p>
-                    <p style="color:#374151;">Employee <strong>${employee?.name || user.username}</strong> (ID: <strong>${employee?.empId || user.username}</strong>) requested a password reset but has no registered email.</p>
-                    <p style="color:#374151;">Share the link below with this employee. It expires in <strong>1 hour</strong>.</p>
-                    <div style="text-align:center;margin:32px 0;">
-                        <a href="${resetURL}" style="background:#4f46e5;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">Reset Password Link</a>
-                    </div>
-                    <p style="color:#64748b;font-size:13px;word-break:break-all;">Direct URL: ${resetURL}</p>
-                    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;"/>
-                    <p style="color:#94a3b8;font-size:12px;text-align:center;">Vignan Employees Mutual Aid Society</p>
-                </div>`
-                : `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:32px;border:1px solid #e2e8f0;border-radius:12px;">
-                    <h2 style="color:#4f46e5;margin-bottom:8px;">Vignan Employees Thrift Society</h2>
-                    <p style="color:#64748b;margin-bottom:24px;">You requested a password reset for your account.</p>
-                    <p style="margin-bottom:8px;">Hello <strong>${employee?.name || user.username}</strong>,</p>
-                    <p style="color:#374151;">Click the button below to reset your password. This link expires in <strong>1 hour</strong>.</p>
-                    <div style="text-align:center;margin:32px 0;">
-                        <a href="${resetURL}" style="background:#4f46e5;color:#fff;padding:12px 32px;border-radius:8px;text-decoration:none;font-weight:600;font-size:16px;">Reset Password</a>
-                    </div>
-                    <p style="color:#94a3b8;font-size:12px;">If you did not request this, ignore this email.</p>
-                    <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;"/>
-                    <p style="color:#94a3b8;font-size:12px;text-align:center;">Vignan Employees Mutual Aid Society</p>
-                </div>`
-        };
-
-        await sendEmail(mailOptions.to, mailOptions.subject, mailOptions.html);
+        await sendEmail(
+            recipientEmail,
+            'Password Reset',
+            `<a href="${resetLink}">Reset Password</a>`
+        );
 
         res.json({
             message: viaAdmin
@@ -235,8 +210,15 @@ router.post('/reset-password/:token', async (req, res) => {
 // @access  Private/Admin
 router.post('/test-email', protect, async (req, res) => {
     try {
-        const sentTo = await sendSelfTestEmail();
-        res.json({ message: `Test email sent to ${sentTo}` });
+        if (!isEmailConfigured()) {
+            return res.status(503).json({ message: 'Email service is not configured on this server.' });
+        }
+        const to = (req.body && req.body.to) ? String(req.body.to).trim() : null;
+        if (!to) {
+            return res.status(400).json({ message: 'Provide { "to": "you@example.com" }' });
+        }
+        await sendEmail(to, 'Test Email', '<p>Test email from Vignan Society server.</p>');
+        res.json({ message: `Test email sent to ${to}` });
     } catch (error) {
         console.error('Test email error:', error.message);
         res.status(500).json({ message: `Failed to send test email: ${error.message}` });
