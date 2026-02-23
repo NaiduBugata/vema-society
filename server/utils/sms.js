@@ -13,7 +13,10 @@
  */
 const axios = require('axios');
 
-const KITE_URL = 'https://bulk.kitesms.com/v3/api.php';
+// Use HTTP host because the provider certificate presented for
+// bulk.kitesms.com does not include that hostname in its SANs.
+// Revert to HTTP endpoint which the provider accepts.
+const KITE_URL = 'http://bulk.kitesms.com/v3/api.php';
 
 /** Format amount in Indian locale with rupee symbol: e.g. 87266.52 -> Rs.87,266.52 */
 function inr(amount) {
@@ -61,6 +64,11 @@ function buildSmsMessage({
 
 /** Send a single SMS via KiteSMS API. */
 async function sendKiteSms({ mobile, message }) {
+    if (!process.env.KITE_API_KEY) {
+        console.error('[SMS] Missing env KITE_API_KEY');
+        throw new Error('Missing KITE_API_KEY environment variable');
+    }
+
     const params = {
         username: process.env.KITE_USERNAME,
         apikey: process.env.KITE_API_KEY,
