@@ -7,7 +7,7 @@ const Employee = require('../models/Employee');
 const { protect } = require('../middleware/authMiddleware');
 const sendEmail = require('../utils/mailer');
 
-const isEmailConfigured = () => !!(process.env.BREVO_USER && process.env.BREVO_PASS);
+const isEmailConfigured = () => !!(process.env.SENDGRID_API_KEY && (process.env.SENDGRID_FROM || process.env.EMAIL_FROM));
 
 // Generate Token
 const generateToken = (id) => {
@@ -129,7 +129,7 @@ router.post('/forgot-password', async (req, res) => {
         }
 
         // Send reset link directly to the employee's email (or admin if no employee email)
-        const recipientEmail = employee?.email || process.env.EMAIL_USER;
+        const recipientEmail = employee?.email || process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
         const viaAdmin = !employee?.email;
 
         // Generate secure random token (hex)
