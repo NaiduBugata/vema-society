@@ -26,40 +26,18 @@ function inr(amount) {
 
 /**
  * Builds the SMS message matching the registered DLT template.
- * Template variables: name, thriftBalance, loanBalance, suretySignatures,
- *   dividend, monthlyThrift, monthlyLoanRepayment, monthlyInterest, totalMonthlyDeduction
+ * Template variables (DLT):
+ *   name, salaryDeductionAmount, thriftBalance, loanBalance, suretySignatures
  */
 function buildSmsMessage({
     name,
+    salaryDeductionAmount,
     thriftBalance,
     loanBalance,
     suretySignatures,
-    dividend = 0,
-    monthlyThrift = 0,
-    monthlyLoanRepayment = 0,
-    monthlyInterest = 0,
-    totalMonthlyDeduction = 0,
 }) {
-    return [
-        `Dear ${name},`,
-        ``,
-        `Your account details with The Vignan Employees Mutually Aided Co-operative Thrift & Credit Society Ltd. are as follows:`,
-        ``,
-        `Thrift Balance: ${inr(thriftBalance)}`,
-        `Loan Balance: ${inr(loanBalance)}`,
-        `Surety Signatures: ${suretySignatures}`,
-        `Dividend: ${inr(dividend)}`,
-        ``,
-        `Monthly Deduction Details:`,
-        `Monthly Thrift Contribution: ${inr(monthlyThrift)}`,
-        `Monthly Loan Repayment: ${inr(monthlyLoanRepayment)}`,
-        `Monthly Interest Amount: ${inr(monthlyInterest)}`,
-        `Total Monthly Deduction: ${inr(totalMonthlyDeduction)}`,
-        ``,
-        `For any clarification, please contact the Society Office.`,
-        ``,
-        `Thank you.`,
-    ].join('\n');
+    // Must match the DLT registered template text exactly (spacing/punctuation/case).
+    return `Dear ${name}, Your Salary Deduction Amount ${inr(salaryDeductionAmount)}, Thrift Balance ${inr(thriftBalance)}, Loan Balance ${inr(loanBalance)}, Surety signs ${suretySignatures}, --- The Vignan Employes Mutually Aided Co-Operative Thrift & Credit Society Ltd.`;
 }
 
 /** Send a single SMS via KiteSMS API. */
@@ -128,14 +106,10 @@ async function sendMonthlyUpdateSms(employee, txData = {}, dividend = 0) {
 
     const message = buildSmsMessage({
         name:                  employee.name,
+        salaryDeductionAmount: txData.totalDeduction       || 0,
         thriftBalance:         employee.thriftBalance || 0,
         loanBalance,
         suretySignatures,
-        dividend,
-        monthlyThrift:         txData.thriftDeduction      || 0,
-        monthlyLoanRepayment:  txData.principalRepayment   || 0,
-        monthlyInterest:       txData.interestPayment      || 0,
-        totalMonthlyDeduction: txData.totalDeduction       || 0,
     });
 
     return sendKiteSms({ mobile, message });
