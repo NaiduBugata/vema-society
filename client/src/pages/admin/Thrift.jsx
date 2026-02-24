@@ -44,10 +44,11 @@ const Thrift = () => {
         }
     };
 
+    const q = String(search || '').toLowerCase();
     const filtered = employees
         .filter(e =>
-            (e.name || '').toLowerCase().includes(search.toLowerCase()) ||
-            String(e.empId || '').toLowerCase().includes(search.toLowerCase())
+            (e.name || '').toLowerCase().includes(q) ||
+            String(e.empId || '').toLowerCase().includes(q)
         )
         .sort((a, b) => {
             let aVal = a[sortField] ?? 0;

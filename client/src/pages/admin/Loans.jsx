@@ -94,9 +94,10 @@ const Loans = () => {
         // Let's just user input for flexibility as per "Adjustment Panel" requirements suggesting manual control.
     };
 
+    const q = String(search || '').toLowerCase();
     const filteredLoans = loans.filter(l =>
-        (l.borrower?.name || '').toLowerCase().includes(search.toLowerCase()) ||
-        (l.borrower?.email || '').toLowerCase().includes(search.toLowerCase())
+        (l.borrower?.name || '').toLowerCase().includes(q) ||
+        (l.borrower?.email || '').toLowerCase().includes(q)
     );
 
     return (

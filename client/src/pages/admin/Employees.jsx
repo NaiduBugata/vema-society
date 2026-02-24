@@ -27,9 +27,10 @@ const Employees = () => {
         }
     };
 
+    const q = String(searchTerm || '').toLowerCase();
     const filteredEmployees = employees.filter(emp =>
-        (emp.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (emp.email || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (emp.name || '').toLowerCase().includes(q) ||
+        (emp.email || '').toLowerCase().includes(q)
     );
 
     return (
