@@ -1643,6 +1643,17 @@ const downloadArchivedMonthReport = async (req, res) => {
 // @access  Private/Admin
 const notifyMonthlySms = async (req, res) => {
     try {
+        const missingEnv = [];
+        if (!process.env.KITE_USERNAME) missingEnv.push('KITE_USERNAME');
+        if (!process.env.KITE_API_KEY) missingEnv.push('KITE_API_KEY');
+        if (!process.env.KITE_SENDER_ID) missingEnv.push('KITE_SENDER_ID');
+        if (!process.env.KITE_TEMPLATE_ID) missingEnv.push('KITE_TEMPLATE_ID');
+        if (missingEnv.length) {
+            return res.status(500).json({
+                message: `Missing SMS env var(s): ${missingEnv.join(', ')}`
+            });
+        }
+
         const { month, dividend = 0 } = req.body;
         if (!month) return res.status(400).json({ message: 'month is required (YYYY-MM)' });
 
@@ -1665,17 +1676,25 @@ const notifyMonthlySms = async (req, res) => {
         const txMap = {};
         for (const tx of transactions) txMap[String(tx.employee)] = tx;
 
+        const concurrency = Math.max(1, Number(process.env.SMS_CONCURRENCY || 5));
         let sent = 0;
         const errors = [];
-        for (const emp of employees) {
-            try {
-                const txData = txMap[String(emp._id)] || {};
-                await sendMonthlyUpdateSms(emp, txData, Number(dividend));
-                sent++;
-            } catch (err) {
-                errors.push({ name: emp.name, phone: emp.phone, error: err.message });
+
+        let cursor = 0;
+        const workers = Array.from({ length: Math.min(concurrency, employees.length) }, async () => {
+            while (cursor < employees.length) {
+                const emp = employees[cursor++];
+                try {
+                    const txData = txMap[String(emp._id)] || {};
+                    await sendMonthlyUpdateSms(emp, txData, Number(dividend));
+                    sent++;
+                } catch (err) {
+                    errors.push({ name: emp.name, phone: emp.phone, error: err.message });
+                }
             }
-        }
+        });
+
+        await Promise.all(workers);
 
         res.json({
             message: `SMS sent to ${sent} employee(s).`,

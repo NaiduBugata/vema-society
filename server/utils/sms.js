@@ -16,7 +16,7 @@ const axios = require('axios');
 // Use HTTP host because the provider certificate presented for
 // bulk.kitesms.com does not include that hostname in its SANs.
 // Revert to HTTP endpoint which the provider accepts.
-const KITE_URL = 'http://bulk.kitesms.com/v3/api.php';
+const KITE_URL = process.env.KITE_URL || 'http://bulk.kitesms.com/v3/api.php';
 
 /** Format amount in Indian locale with rupee symbol: e.g. 87266.52 -> Rs.87,266.52 */
 function inr(amount) {
@@ -64,9 +64,14 @@ function buildSmsMessage({
 
 /** Send a single SMS via KiteSMS API. */
 async function sendKiteSms({ mobile, message }) {
-    if (!process.env.KITE_API_KEY) {
-        console.error('[SMS] Missing env KITE_API_KEY');
-        throw new Error('Missing KITE_API_KEY environment variable');
+    const missing = [];
+    if (!process.env.KITE_USERNAME) missing.push('KITE_USERNAME');
+    if (!process.env.KITE_API_KEY) missing.push('KITE_API_KEY');
+    if (!process.env.KITE_SENDER_ID) missing.push('KITE_SENDER_ID');
+    if (!process.env.KITE_TEMPLATE_ID) missing.push('KITE_TEMPLATE_ID');
+    if (missing.length) {
+        console.error('[SMS] Missing env vars:', missing);
+        throw new Error(`Missing SMS env var(s): ${missing.join(', ')}`);
     }
 
     const params = {
@@ -99,8 +104,15 @@ async function sendKiteSms({ mobile, message }) {
 
         return result;
     } catch (err) {
-        console.error('[SMS] KiteSMS request failed:', err && err.response ? { status: err.response.status, data: err.response.data } : err.message || err);
-        throw err;
+        const status = err?.response?.status;
+        const data = err?.response?.data;
+        console.error('[SMS] KiteSMS request failed:', status ? { status, data } : (err?.message || err));
+
+        if (status && data !== undefined) {
+            const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
+            throw new Error(`KiteSMS HTTP ${status}: ${dataStr}`);
+        }
+        throw new Error(`KiteSMS request failed: ${err?.message || String(err)}`);
     }
 }
 
