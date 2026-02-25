@@ -144,10 +144,72 @@ router.post('/forgot-password', async (req, res) => {
 
         console.log('[ForgotPwd] Sending reset link for user:', user.username, '→ to:', recipientEmail);
 
+                const resetEmailHtml = `
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Password Reset</title>
+    </head>
+    <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+        <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+            Use this link to reset your Vignan Society password.
+        </div>
+
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f1f5f9;padding:24px 0;">
+            <tr>
+                <td align="center" style="padding:0 16px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;width:100%;">
+                        <tr>
+                            <td style="padding:18px 18px 10px 18px;color:#0f172a;font-weight:800;font-size:18px;">
+                                Vignan Society
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:22px 20px;">
+                                <div style="font-size:16px;color:#0f172a;line-height:1.5;font-weight:800;">Password Reset</div>
+
+                                <div style="margin-top:10px;font-size:14px;color:#475569;line-height:1.7;">
+                                    We received a request to reset your password. Click the button below to set a new password.
+                                </div>
+
+                                <div style="margin-top:16px;text-align:center;">
+                                    <a href="${resetLink}" style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;">
+                                        Reset Password
+                                    </a>
+                                </div>
+
+                                <div style="margin-top:14px;padding:12px 14px;border:1px solid #e5e7eb;background:#f8fafc;border-radius:12px;color:#334155;font-size:13px;line-height:1.6;">
+                                    <strong>Important:</strong> This link expires in <strong>1 hour</strong>.
+                                    If you didn’t request a password reset, you can safely ignore this email.
+                                </div>
+
+                                <div style="margin-top:16px;font-size:12px;color:#94a3b8;line-height:1.5;text-align:center;">
+                                    If the button doesn’t work, open this link:<br/>
+                                    <a href="${resetLink}" style="color:#2563eb;text-decoration:underline;word-break:break-all;">${resetLink}</a>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <td style="padding:14px 18px;color:#94a3b8;font-size:12px;text-align:center;">
+                                © ${new Date().getFullYear()} Vignan Society
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>
+`;
+
         await sendEmail(
             recipientEmail,
             'Password Reset',
-            `<a href="${resetLink}">Reset Password</a>`
+                        resetEmailHtml
         );
 
         res.json({
