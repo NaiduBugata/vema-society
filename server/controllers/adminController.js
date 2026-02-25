@@ -12,6 +12,20 @@ const xlsx = require('xlsx');
 const sendEmail = require('../utils/mailer');
 const { sendMonthlyUpdateSms } = require('../utils/sms');
 
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function inr(amount) {
+    const num = Number(amount) || 0;
+    return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 const sendWelcomeEmail = async ({ name, email, empId, username, password }) => {
     const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/login`;
     await sendEmail(
@@ -68,15 +82,112 @@ const sendCredentialsSummaryToAdmin = async (createdUsers, fileName) => {
     );
 };
 
-const sendMonthlyUpdateNotification = async (employee, displayMonth) => {
-    const portalUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}`;
-    await sendEmail(
-        employee.email,
-        `Vignan Society - ${displayMonth} Monthly Update`,
-        `<p>Dear <strong>${employee.name}</strong>,</p>
-<p>Your monthly update for <strong>${displayMonth}</strong> is ready.</p>
-<p><a href="${portalUrl}">Open Portal</a></p>`
-    );
+const sendMonthlyUpdateNotification = async (employee, displayMonth, txData = null, monthKey = '') => {
+        const portalUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}`;
+
+        const rows = txData
+                ? [
+                        ['Salary', inr(txData.salary)],
+                        ['Thrift Deduction', inr(txData.thriftDeduction)],
+                        ['Loan EMI', inr(txData.loanEMI)],
+                        ['Interest', inr(txData.interestPayment)],
+                        ['Principal', inr(txData.principalRepayment)],
+                        ['Total Deduction', inr(txData.totalDeduction)],
+                        ['Paid Amount', inr(txData.paidAmount)],
+                        ['Net Salary', inr(txData.netSalary)],
+                        ['CB Thrift Balance', inr(txData.cbThriftBalance)],
+                        ['Loan Balance', inr(txData.loanBalance)],
+                ]
+                : [];
+
+        const detailsTable = txData
+                ? `
+                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#ffffff;">
+                                <tbody>
+                                        ${rows
+                                                .map(
+                                                        ([label, value], idx) => `
+                                                <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                                                        <td style="padding:12px 14px;border-bottom:1px solid #eef2f7;color:#334155;font-size:14px;">${escapeHtml(label)}</td>
+                                                        <td style="padding:12px 14px;border-bottom:1px solid #eef2f7;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${escapeHtml(value)}</td>
+                                                </tr>`
+                                                )
+                                                .join('')}
+                                </tbody>
+                        </table>
+                `
+                : `
+                        <div style="padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:12px;color:#92400e;font-size:14px;">
+                                Monthly details for <strong>${escapeHtml(displayMonth)}</strong> are not available yet. Please open the portal to view your latest update.
+                        </div>
+                `;
+
+        const html = `
+<!doctype html>
+<html>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Monthly Update</title>
+    </head>
+    <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
+        <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
+            Your monthly update for ${escapeHtml(displayMonth)} is ready.
+        </div>
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background:#f1f5f9;padding:24px 0;">
+            <tr>
+                <td align="center" style="padding:0 16px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" width="600" style="max-width:600px;width:100%;">
+                        <tr>
+                            <td style="padding:18px 18px 10px 18px;color:#0f172a;font-weight:800;font-size:18px;">
+                                Vignan Society
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;padding:22px 20px;">
+                                <div style="font-size:16px;color:#0f172a;line-height:1.5;">
+                                    Dear <strong>${escapeHtml(employee.name)}</strong>,
+                                </div>
+                                <div style="margin-top:8px;font-size:14px;color:#475569;line-height:1.6;">
+                                    Your monthly update for <strong>${escapeHtml(displayMonth)}</strong> is ready.
+                                    ${employee.empId != null ? ` <span style="color:#94a3b8;">(Emp ID: ${escapeHtml(employee.empId)})</span>` : ''}
+                                </div>
+
+                                <div style="margin-top:18px;">
+                                    <div style="font-size:13px;color:#64748b;margin-bottom:10px;font-weight:700;">Monthly Summary ${monthKey ? `(${escapeHtml(monthKey)})` : ''}</div>
+                                    ${detailsTable}
+                                </div>
+
+                                <div style="margin-top:18px;text-align:center;">
+                                    <a href="${escapeHtml(portalUrl)}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:12px;font-weight:800;font-size:14px;">
+                                        Open Portal
+                                    </a>
+                                </div>
+
+                                <div style="margin-top:16px;font-size:12px;color:#94a3b8;line-height:1.5;text-align:center;">
+                                    If the button doesn’t work, open this link:<br/>
+                                    <a href="${escapeHtml(portalUrl)}" style="color:#2563eb;text-decoration:underline;">${escapeHtml(portalUrl)}</a>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding:14px 18px;color:#94a3b8;font-size:12px;text-align:center;">
+                                © ${new Date().getFullYear()} Vignan Society
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+</html>
+`;
+
+        await sendEmail(
+                employee.email,
+                `Vignan Society - ${displayMonth} Monthly Update`,
+                html
+        );
 };
 
 // @desc    Get Admin Dashboard Stats
@@ -1723,11 +1834,21 @@ const notifyMonthlyUpdate = async (req, res) => {
             return res.json({ message: 'No employees with a registered email address found.', sent: 0, errors: [] });
         }
 
+        // Fetch the transaction for the requested month for all employees
+        const empIds = employees.map(e => e._id);
+        const transactions = await Transaction.find(
+            { employee: { $in: empIds }, month },
+            'employee month salary thriftDeduction loanEMI interestPayment principalRepayment totalDeduction paidAmount netSalary cbThriftBalance loanBalance'
+        ).lean();
+        const txMap = {};
+        for (const tx of transactions) txMap[String(tx.employee)] = tx;
+
         let sent = 0;
         const errors = [];
         for (const emp of employees) {
             try {
-                await sendMonthlyUpdateNotification(emp, displayMonth);
+                const txData = txMap[String(emp._id)] || null;
+                await sendMonthlyUpdateNotification(emp, displayMonth, txData, month);
                 sent++;
             } catch (err) {
                 errors.push({ name: emp.name, email: emp.email, error: err.message });
