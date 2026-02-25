@@ -1,4 +1,5 @@
 import { useState, useContext } from 'react';
+import { flushSync } from 'react-dom';
 import AuthContext from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -18,7 +19,8 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (loggingIn) return;
-        setLoggingIn(true);
+        // Ensure the UI reflects loading immediately (React 18 async batching can delay this)
+        flushSync(() => setLoggingIn(true));
         try {
             const user = await login(formData.username, formData.password);
             toast.success('Login Successful');

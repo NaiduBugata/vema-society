@@ -19,11 +19,12 @@ import EmployeeTransactions from './pages/employee/Transactions';
 import EmployeeLoan from './pages/employee/Loan';
 import EmployeeSureties from './pages/employee/Sureties';
 import { Toaster } from 'react-hot-toast';
+import GlobalLoadingOverlay from './components/GlobalLoadingOverlay';
 
 const PrivateRoute = ({ children, role }) => {
   const { user, loading } = useContext(AuthContext);
 
-  if (loading) return <div className="text-white text-center mt-20">Loading...</div>;
+  if (loading) return <div className="text-slate-700 dark:text-slate-200 text-center mt-20">VEMACS is Loading</div>;
 
   if (!user) {
     return <Navigate to="/" />;
@@ -42,6 +43,7 @@ function App() {
       <AuthProvider>
         <ThemeProvider>
           <Toaster position="top-right" />
+          <GlobalLoadingOverlay />
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/change-password" element={<ChangePassword />} />
