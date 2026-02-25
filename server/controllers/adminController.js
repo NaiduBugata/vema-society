@@ -82,45 +82,53 @@ const sendCredentialsSummaryToAdmin = async (createdUsers, fileName) => {
     );
 };
 
-const sendMonthlyUpdateNotification = async (employee, displayMonth, txData = null, monthKey = '') => {
+const sendMonthlyUpdateNotification = async (employee, displayMonth, txData = null, monthKey = '', dividend = 0) => {
         const portalUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}`;
 
-        const rows = txData
-                ? [
-                        ['Salary', inr(txData.salary)],
-                        ['Thrift Deduction', inr(txData.thriftDeduction)],
-                        ['Loan EMI', inr(txData.loanEMI)],
-                        ['Interest', inr(txData.interestPayment)],
-                        ['Principal', inr(txData.principalRepayment)],
-                        ['Total Deduction', inr(txData.totalDeduction)],
-                        ['Paid Amount', inr(txData.paidAmount)],
-                        ['Net Salary', inr(txData.netSalary)],
-                        ['CB Thrift Balance', inr(txData.cbThriftBalance)],
-                        ['Loan Balance', inr(txData.loanBalance)],
-                ]
-                : [];
+    const thriftBalance = txData?.cbThriftBalance ?? employee?.thriftBalance ?? 0;
+    const loanBalance = txData?.loanBalance ?? 0;
+    const suretySignatures = Array.isArray(employee?.guaranteeingLoans) ? employee.guaranteeingLoans.length : 0;
 
-        const detailsTable = txData
-                ? `
-                        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#ffffff;">
-                                <tbody>
-                                        ${rows
-                                                .map(
-                                                        ([label, value], idx) => `
-                                                <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
-                                                        <td style="padding:12px 14px;border-bottom:1px solid #eef2f7;color:#334155;font-size:14px;">${escapeHtml(label)}</td>
-                                                        <td style="padding:12px 14px;border-bottom:1px solid #eef2f7;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${escapeHtml(value)}</td>
-                                                </tr>`
-                                                )
-                                                .join('')}
-                                </tbody>
-                        </table>
-                `
-                : `
-                        <div style="padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:12px;color:#92400e;font-size:14px;">
-                                Monthly details for <strong>${escapeHtml(displayMonth)}</strong> are not available yet. Please open the portal to view your latest update.
-                        </div>
-                `;
+    const balancesRows = [
+        ['Thrift Balance', `₹${inr(thriftBalance)}`],
+        ['Loan Balance', `₹${inr(loanBalance)}`],
+        ['Surety Signatures', String(suretySignatures)],
+        ['Dividend', `₹${inr(dividend)}`],
+    ];
+
+    const deductionRows = [
+        ['Monthly Thrift Contribution', `₹${inr(txData?.thriftDeduction ?? 0)}`],
+        ['Monthly Loan Repayment', `₹${inr(txData?.principalRepayment ?? 0)}`],
+        ['Monthly Interest Amount', `₹${inr(txData?.interestPayment ?? 0)}`],
+        ['Total Monthly Deduction', `₹${inr(txData?.totalDeduction ?? 0)}`],
+    ];
+
+    const renderTable = (rows) => `
+        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:separate;border-spacing:0;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#ffffff;">
+            <tbody>
+                ${rows
+                    .map(
+                        ([label, value], idx) => `
+                    <tr style="background:${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                        <td style="padding:12px 14px;border-bottom:1px solid #eef2f7;color:#334155;font-size:14px;">${escapeHtml(label)}</td>
+                        <td style="padding:12px 14px;border-bottom:1px solid #eef2f7;color:#0f172a;font-size:14px;font-weight:700;text-align:right;">${escapeHtml(value)}</td>
+                    </tr>`
+                    )
+                    .join('')}
+            </tbody>
+        </table>
+    `;
+
+    const balancesTable = renderTable(balancesRows);
+    const deductionTable = renderTable(deductionRows);
+
+    const missingTxBanner = txData
+        ? ''
+        : `
+            <div style="margin-top:12px;padding:12px 14px;border:1px solid #fde68a;background:#fffbeb;border-radius:12px;color:#92400e;font-size:14px;">
+                Monthly deduction details for <strong>${escapeHtml(displayMonth)}</strong> are not available yet. Amounts may show as 0. Please open the portal to view your latest update.
+            </div>
+        `;
 
         const html = `
 <!doctype html>
@@ -154,8 +162,12 @@ const sendMonthlyUpdateNotification = async (employee, displayMonth, txData = nu
                                 </div>
 
                                 <div style="margin-top:18px;">
-                                    <div style="font-size:13px;color:#64748b;margin-bottom:10px;font-weight:700;">Monthly Summary ${monthKey ? `(${escapeHtml(monthKey)})` : ''}</div>
-                                    ${detailsTable}
+                                    <div style="font-size:13px;color:#64748b;margin-bottom:10px;font-weight:700;">Monthly Update Details ${monthKey ? `(${escapeHtml(monthKey)})` : ''}</div>
+                                    ${balancesTable}
+                                    <div style="height:12px;line-height:12px;">&nbsp;</div>
+                                    <div style="font-size:13px;color:#64748b;margin-bottom:10px;font-weight:700;">Monthly Deduction Details</div>
+                                    ${deductionTable}
+                                    ${missingTxBanner}
                                 </div>
 
                                 <div style="margin-top:18px;text-align:center;">
@@ -1820,7 +1832,7 @@ const notifyMonthlySms = async (req, res) => {
 
 const notifyMonthlyUpdate = async (req, res) => {
     try {
-        const { month } = req.body;
+        const { month, dividend = 0 } = req.body;
         if (!month) return res.status(400).json({ message: 'month is required (YYYY-MM)' });
 
         const [yearStr, monthNum] = month.split('-');
@@ -1828,7 +1840,7 @@ const notifyMonthlyUpdate = async (req, res) => {
         const displayMonth = `${monthNames[parseInt(monthNum) - 1]} ${yearStr}`;
 
         const employees = await Employee.find({ email: { $exists: true, $ne: '' } })
-            .select('name email empId');
+            .select('name email empId thriftBalance guaranteeingLoans');
 
         if (employees.length === 0) {
             return res.json({ message: 'No employees with a registered email address found.', sent: 0, errors: [] });
@@ -1848,7 +1860,7 @@ const notifyMonthlyUpdate = async (req, res) => {
         for (const emp of employees) {
             try {
                 const txData = txMap[String(emp._id)] || null;
-                await sendMonthlyUpdateNotification(emp, displayMonth, txData, month);
+                await sendMonthlyUpdateNotification(emp, displayMonth, txData, month, Number(dividend));
                 sent++;
             } catch (err) {
                 errors.push({ name: emp.name, email: emp.email, error: err.message });
