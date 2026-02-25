@@ -12,6 +12,7 @@ const Upload = () => {
     const [skippedExisting, setSkippedExisting] = useState([]);
     const [warnings, setWarnings] = useState([]);
     const [columnSummary, setColumnSummary] = useState(null);
+    const [showUploadLogs, setShowUploadLogs] = useState(false);
 
     const [uploadType, setUploadType] = useState('employees'); // 'employees' or 'monthly'
     const [uploadProgress, setUploadProgress] = useState(0); // 0-100 display %
@@ -63,6 +64,7 @@ const Upload = () => {
         setSkippedExisting([]);
         setWarnings([]);
         setColumnSummary(null);
+        setShowUploadLogs(false);
         setEmailsSent(null);
         setEmailErrors([]);
         setUploadedMonth(null);
@@ -363,6 +365,21 @@ const Upload = () => {
                             Upload Summary
                         </h3>
 
+                        {(
+                            (log?.errorLog && log.errorLog.length > 0) ||
+                            skippedExisting.length > 0 ||
+                            warnings.length > 0 ||
+                            !!columnSummary
+                        ) && (
+                            <button
+                                type="button"
+                                onClick={() => setShowUploadLogs(v => !v)}
+                                className="w-full btn bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 flex items-center justify-center gap-2 mb-4"
+                            >
+                                {showUploadLogs ? 'Hide Logs' : 'Show Logs'}
+                            </button>
+                        )}
+
                         <div className="space-y-4">
                             <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800">
                                 <span className="text-slate-500 dark:text-slate-400">Total Records</span>
@@ -441,9 +458,9 @@ const Upload = () => {
                                         onClick={handleSendSms}
                                         disabled={sendingSms || !!smsResult || !uploadedMonth}
                                         title={uploadedMonth ? `Send SMS for ${uploadedMonth}` : 'Month not detected from upload'}
-                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium text-sm transition-colors"
+                                        className="w-full flex items-center justify-center gap-2 px-5 py-4 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl font-semibold text-base transition-colors"
                                     >
-                                        <MessageSquare size={16} className={sendingSms ? 'animate-pulse' : ''} />
+                                        <MessageSquare size={18} className={sendingSms ? 'animate-pulse' : ''} />
                                         {sendingSms
                                             ? 'Sending SMS…'
                                             : smsResult
@@ -522,7 +539,7 @@ const Upload = () => {
                             </div>
                         )}
 
-                        {log.errorLog && log.errorLog.length > 0 && (
+                        {showUploadLogs && log.errorLog && log.errorLog.length > 0 && (
                             <div className="mt-6">
                                 <h4 className="font-bold text-red-400 mb-2 text-sm">Error Log (Rows Skipped)</h4>
                                 <div className="max-h-40 overflow-y-auto bg-slate-50 dark:bg-slate-950 p-3 rounded text-xs text-red-600 dark:text-red-300 font-mono">
@@ -533,7 +550,7 @@ const Upload = () => {
                             </div>
                         )}
 
-                        {skippedExisting.length > 0 && (
+                        {showUploadLogs && skippedExisting.length > 0 && (
                             <div className="mt-6">
                                 <h4 className="font-bold text-blue-400 mb-2 text-sm flex items-center gap-2">
                                     <AlertCircle size={14} /> Already Existing Employees ({skippedExisting.length})
@@ -564,7 +581,7 @@ const Upload = () => {
                             </div>
                         )}
 
-                        {warnings.length > 0 && (
+                        {showUploadLogs && warnings.length > 0 && (
                             <div className="mt-6">
                                 <h4 className="font-bold text-yellow-400 mb-2 text-sm flex items-center gap-2">
                                     <AlertCircle size={14} /> Data Mismatch Warnings ({warnings.length})
@@ -596,7 +613,7 @@ const Upload = () => {
                         )}
 
                         {/* Column Detection Summary (monthly only) */}
-                        {columnSummary && (
+                        {showUploadLogs && columnSummary && (
                             <div className="mt-6">
                                 <h4 className="font-bold text-slate-700 dark:text-slate-200 mb-2 text-sm flex items-center gap-2">
                                     <CheckCircle size={14} className="text-indigo-500" /> Column Detection
