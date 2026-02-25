@@ -2,11 +2,12 @@ import { useState, useContext } from 'react';
 import AuthContext from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const Login = () => {
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
+    const [loggingIn, setLoggingIn] = useState(false);
     const { login } = useContext(AuthContext);
     const navigate = useNavigate();
 
@@ -16,6 +17,8 @@ const Login = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loggingIn) return;
+        setLoggingIn(true);
         try {
             const user = await login(formData.username, formData.password);
             toast.success('Login Successful');
@@ -35,6 +38,8 @@ const Login = () => {
             }
         } catch (error) {
             toast.error(error.response?.data?.message || 'Login Failed');
+        } finally {
+            setLoggingIn(false);
         }
     };
 
@@ -78,7 +83,14 @@ const Login = () => {
                             </button>
                         </div>
                     </div>
-                    <button type="submit" className="btn btn-primary mt-2">Login</button>
+                    <button
+                        type="submit"
+                        disabled={loggingIn}
+                        className={`btn btn-primary mt-2 flex items-center justify-center gap-2 ${loggingIn ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    >
+                        {loggingIn && <Loader2 size={18} className="animate-spin" />}
+                        {loggingIn ? 'Logging in…' : 'Login'}
+                    </button>
                     <div className="text-center mt-2">
                         <Link
                             to="/forgot-password"
