@@ -7,7 +7,47 @@
     <title>Vignan Thrift Society</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        /* Minimal pre-React loader; React will replace #root contents on mount */
+        .preload {
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        }
+        .preload__wrap {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .preload__spinner {
+          width: 18px;
+          height: 18px;
+          border-radius: 9999px;
+          border: 2px solid currentColor;
+          border-right-color: transparent;
+          animation: preload-spin 0.9s linear infinite;
+        }
+        @keyframes preload-spin {
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        .preload__text {
+          font-size: 14px;
+          font-weight: 600;
+        }
+      </style>
+      <div class="preload" role="status" aria-live="polite" aria-label="Loading">
+        <div class="preload__wrap">
+          <div class="preload__spinner" aria-hidden="true"></div>
+          <div class="preload__text">Loading…</div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

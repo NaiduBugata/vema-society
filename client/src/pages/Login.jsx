@@ -4,6 +4,7 @@ import AuthContext from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import FullScreenLoader from '../components/FullScreenLoader';
 
 const Login = () => {
     const [formData, setFormData] = useState({ username: '', password: '' });
@@ -47,6 +48,13 @@ const Login = () => {
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-dark">
+            {loggingIn && (
+                <FullScreenLoader
+                    label="Logging in…"
+                    overlay
+                    zIndexClass="z-[60]"
+                />
+            )}
             <div className="card w-full max-w-md">
                 <div className="flex flex-col items-center mb-6">
                     <img src="/logo.png" alt="Vignan Logo" className="h-16 w-16 object-contain mb-3" />
