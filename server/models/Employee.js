@@ -7,6 +7,8 @@ const employeeSchema = new mongoose.Schema({
     department: { type: String },
     designation: { type: String },
     phone: { type: String },
+    panNumber: { type: String },
+    aadhaarNumber: { type: String },
     salary: { type: Number, default: 0 },
     thriftContribution: { type: Number, default: 0 },
 

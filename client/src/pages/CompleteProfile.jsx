@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import AuthContext from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
-import { Mail, Phone, CheckCircle, ArrowRight, Lock } from 'lucide-react';
+import { Mail, Phone, CheckCircle, ArrowRight, Lock, CreditCard, Fingerprint } from 'lucide-react';
 
 const CompleteProfile = () => {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
+    const [panNumber, setPanNumber] = useState('');
+    const [aadhaarNumber, setAadhaarNumber] = useState('');
     const [loading, setLoading] = useState(false);
     const { user } = useContext(AuthContext);
     const navigate = useNavigate();
@@ -30,9 +32,27 @@ const CompleteProfile = () => {
             return;
         }
 
+        const normalizedPan = panNumber.trim().toUpperCase();
+        const normalizedAadhaar = aadhaarNumber.replace(/\s+/g, '').trim();
+
+        if (normalizedPan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(normalizedPan)) {
+            toast.error('Please enter a valid PAN number');
+            return;
+        }
+
+        if (normalizedAadhaar && !/^[0-9]{12}$/.test(normalizedAadhaar)) {
+            toast.error('Please enter a valid Aadhaar number');
+            return;
+        }
+
         setLoading(true);
         try {
-            await api.put('/employee/update-profile', { email, phone });
+            await api.put('/employee/update-profile', {
+                email,
+                phone,
+                panNumber: normalizedPan,
+                aadhaarNumber: normalizedAadhaar
+            });
             toast.success('Profile completed! Welcome to Vignan Thrift Society.');
             navigate('/dashboard');
         } catch (error) {
@@ -80,6 +100,7 @@ const CompleteProfile = () => {
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
                                 autoFocus
+                                disabled={loading}
                             />
                         </div>
                         <p className="text-xs text-slate-500 mt-1">Used for password recovery and notifications</p>
@@ -98,9 +119,48 @@ const CompleteProfile = () => {
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                                 required
+                                disabled={loading}
                             />
                         </div>
                         <p className="text-xs text-slate-500 mt-1">Your registered mobile number</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium mb-1 text-slate-300">
+                            PAN Number
+                        </label>
+                        <div className="relative">
+                            <CreditCard size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                                type="text"
+                                className="input w-full bg-slate-800 border-slate-700 text-white p-3 pl-9 rounded"
+                                placeholder="ABCDE1234F"
+                                value={panNumber}
+                                onChange={(e) => setPanNumber(e.target.value)}
+                                disabled={loading}
+                                autoCapitalize="characters"
+                            />
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">Optional — used for verification</p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium mb-1 text-slate-300">
+                            Aadhaar Number
+                        </label>
+                        <div className="relative">
+                            <Fingerprint size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                className="input w-full bg-slate-800 border-slate-700 text-white p-3 pl-9 rounded"
+                                placeholder="12 digit number"
+                                value={aadhaarNumber}
+                                onChange={(e) => setAadhaarNumber(e.target.value)}
+                                disabled={loading}
+                            />
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">Optional — digits only</p>
                     </div>
 
                     <button

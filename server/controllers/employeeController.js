@@ -256,13 +256,24 @@ const getMySuretyView = async (req, res) => {
 // @access  Private/Employee
 const updateMyProfile = async (req, res) => {
     try {
-        const { email, phone } = req.body;
+        const { email, phone, panNumber, aadhaarNumber } = req.body;
+
+        const normalizedPan = panNumber ? String(panNumber).toUpperCase().trim() : '';
+        const normalizedAadhaar = aadhaarNumber ? String(aadhaarNumber).replace(/\s+/g, '').trim() : '';
 
         if (!email || !String(email).includes('@')) {
             return res.status(400).json({ message: 'Please provide a valid email address' });
         }
         if (!phone || String(phone).trim().length < 6) {
             return res.status(400).json({ message: 'Please provide a valid phone number' });
+        }
+
+        // Optional but validated if provided
+        if (normalizedPan && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(normalizedPan)) {
+            return res.status(400).json({ message: 'Please provide a valid PAN number' });
+        }
+        if (normalizedAadhaar && !/^[0-9]{12}$/.test(normalizedAadhaar)) {
+            return res.status(400).json({ message: 'Please provide a valid Aadhaar number' });
         }
 
         const employee = await Employee.findById(req.user.employeeId);
@@ -281,6 +292,9 @@ const updateMyProfile = async (req, res) => {
 
         employee.email = email.toLowerCase().trim();
         employee.phone = String(phone).trim();
+
+        if (normalizedPan) employee.panNumber = normalizedPan;
+        if (normalizedAadhaar) employee.aadhaarNumber = normalizedAadhaar;
         await employee.save();
 
         res.json({ message: 'Profile updated successfully', employee });

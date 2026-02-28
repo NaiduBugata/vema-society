@@ -70,6 +70,7 @@ const Login = () => {
                             value={formData.username}
                             onChange={handleChange}
                             required
+                            disabled={loggingIn}
                         />
                     </div>
                     <div>
@@ -82,10 +83,12 @@ const Login = () => {
                                 value={formData.password}
                                 onChange={handleChange}
                                 required
+                                disabled={loggingIn}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
+                                disabled={loggingIn}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
                                 aria-label={showPassword ? "Hide password" : "Show password"}
                             >
@@ -104,7 +107,9 @@ const Login = () => {
                     <div className="text-center mt-2">
                         <Link
                             to="/forgot-password"
-                            className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
+                            className={`text-sm text-indigo-400 hover:text-indigo-300 transition-colors ${loggingIn ? 'pointer-events-none opacity-60' : ''}`}
+                            aria-disabled={loggingIn}
+                            tabIndex={loggingIn ? -1 : 0}
                         >
                             Forgot Password?
                         </Link>
