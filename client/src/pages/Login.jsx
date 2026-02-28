@@ -55,67 +55,69 @@ const Login = () => {
                     zIndexClass="z-[60]"
                 />
             )}
-            <div className="card w-full max-w-md">
-                <div className="flex flex-col items-center mb-6">
-                    <img src="/logo.png" alt="Vignan Logo" className="h-16 w-16 object-contain mb-3" />
-                    <h2 className="text-2xl font-bold text-center text-primary">Vignan Thrift Society</h2>
-                </div>
-                <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Email / Username</label>
-                        <input
-                            type="text"
-                            name="username"
-                            className="input"
-                            value={formData.username}
-                            onChange={handleChange}
-                            required
-                            disabled={loggingIn}
-                        />
+            {!loggingIn && (
+                <div className="card w-full max-w-md">
+                    <div className="flex flex-col items-center mb-6">
+                        <img src="/logo.png" alt="Vignan Logo" className="h-16 w-16 object-contain mb-3" />
+                        <h2 className="text-2xl font-bold text-center text-primary">Vignan Thrift Society</h2>
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Password</label>
-                        <div className="relative">
+                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Email / Username</label>
                             <input
-                                type={showPassword ? "text" : "password"}
-                                name="password"
-                                className="input pr-10"
-                                value={formData.password}
+                                type="text"
+                                name="username"
+                                className="input"
+                                value={formData.username}
                                 onChange={handleChange}
                                 required
                                 disabled={loggingIn}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                disabled={loggingIn}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
-                                aria-label={showPassword ? "Hide password" : "Show password"}
-                            >
-                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                            </button>
                         </div>
-                    </div>
-                    <button
-                        type="submit"
-                        disabled={loggingIn}
-                        className={`btn btn-primary mt-2 flex items-center justify-center gap-2 ${loggingIn ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    >
-                        {loggingIn && <Loader2 size={18} className="animate-spin" />}
-                        {loggingIn ? 'Logging in…' : 'Login'}
-                    </button>
-                    <div className="text-center mt-2">
-                        <Link
-                            to="/forgot-password"
-                            className={`text-sm text-indigo-400 hover:text-indigo-300 transition-colors ${loggingIn ? 'pointer-events-none opacity-60' : ''}`}
-                            aria-disabled={loggingIn}
-                            tabIndex={loggingIn ? -1 : 0}
+                        <div>
+                            <label className="block text-sm font-medium mb-1">Password</label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? "text" : "password"}
+                                    name="password"
+                                    className="input pr-10"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    required
+                                    disabled={loggingIn}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    disabled={loggingIn}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                                </button>
+                            </div>
+                        </div>
+                        <button
+                            type="submit"
+                            disabled={loggingIn}
+                            className={`btn btn-primary mt-2 flex items-center justify-center gap-2 ${loggingIn ? 'opacity-70 cursor-not-allowed' : ''}`}
                         >
-                            Forgot Password?
-                        </Link>
-                    </div>
-                </form>
-            </div>
+                            {loggingIn && <Loader2 size={18} className="animate-spin" />}
+                            {loggingIn ? 'Logging in…' : 'Login'}
+                        </button>
+                        <div className="text-center mt-2">
+                            <Link
+                                to="/forgot-password"
+                                className={`text-sm text-indigo-400 hover:text-indigo-300 transition-colors ${loggingIn ? 'pointer-events-none opacity-60' : ''}`}
+                                aria-disabled={loggingIn}
+                                tabIndex={loggingIn ? -1 : 0}
+                            >
+                                Forgot Password?
+                            </Link>
+                        </div>
+                    </form>
+                </div>
+            )}
         </div>
     );
 };
